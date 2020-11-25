@@ -1,0 +1,52 @@
+<launch>
+  <arg name="video_device" default="/dev/video0"/>
+
+  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+    <param name="video_device" value="$(arg video_device)" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="480" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="camera_frame_id" value="usb_cam" />
+    <param name="io_method" value="mmap"/>
+  </node>
+
+  <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+    <remap from="image" to="/usb_cam/image_raw"/>
+    <param name="autosize" value="true" />
+  </node>
+
+  <arg name="marker_size" default="9" />
+  <arg name="max_new_marker_error" default="0.08" />
+  <arg name="max_track_error" default="0.2" />
+
+  <arg name="cam_image_topic" default="/usb_cam/image_raw" />
+  <arg name="cam_info_topic" default="/usb_cam/camera_info" />
+  <arg name="output_frame" default="/usb_cam" />
+
+  <node name="ar_track_alvar" pkg="ar_track_alvar" type="individualMarkersNoKinect" respawn="false" output="screen">
+    <param name="marker_size"           type="double" value="$(arg marker_size)" />
+    <param name="max_new_marker_error"  type="double" value="$(arg max_new_marker_error)" />
+    <param name="max_track_error"       type="double" value="$(arg max_track_error)" />
+    <param name="output_frame"          type="string" value="$(arg output_frame)" />
+
+    <remap from="camera_image"  to="$(arg cam_image_topic)" />
+    <remap from="camera_info"   to="$(arg cam_info_topic)" />
+  </node>
+
+  <arg name="sim" default="false" />
+  <arg name="limited" default="false"/>
+  <arg name="debug" default="false" />
+    
+  <!-- Remap follow_joint_trajectory -->
+  <remap from="/follow_joint_trajectory" to="/scaled_pos_joint_traj_controller/follow_joint_trajectory"/>
+  
+  <!-- Launch moveit -->
+  <include file="$(find ur5_e_moveit_config)/launch/move_group.launch">
+    <arg name="limited" default="$(arg limited)"/>
+    <arg name="debug" default="$(arg debug)" />
+  </include>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="webcam" args="0 0 0.3 3.14 3.14 1.571 world usb_cam"/>
+
+  
+</launch>
